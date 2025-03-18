@@ -161,8 +161,10 @@
 </head>
 <body>
     <div id="auth-screen">
+        <!-- Imagen añadida al principio -->
+        <img src="ruta-de-la-imagen.jpg" alt="Logo" style="max-width:300px; margin-bottom:20px;">
         <h1>Autenticación</h1>
-        <input type="password" id="password-input" placeholder="Contraseña maestra">
+        <input type="password" id="password-input" placeholder="Contraseña maestra" autofocus onkeyup="if(event.key==='Enter' || event.keyCode===13){ authenticate(); }">
         <button onclick="authenticate()">Acceder</button>
     </div>
     
@@ -174,22 +176,19 @@
             <div id="sidebar">
                 <button class="category-btn" onclick="loadCategory('tv')">📺 TV en Vivo</button>
                                
-                
                 <!-- External Link Indicator -->
                 <div id="external-link-indicator">🔗 Enlaces externos a continuación:</div>
                 
                 <button class="category-btn" onclick="window.location.href='https://www.serieslatino.org/'">📺 Series - SeriesLatino</button>
                 <button class="category-btn" onclick="window.location.href='https://www.verseries.ac/'">📺 Series - VerSeries</button>
-                <button class="category-btn" onclick="window.location.href='https://jkanime.net/'">🎌 Anime - JKAnime</button>
-                <button class="category-btn" onclick="window.location.href='https://animeflv.com.se/'">🎌 Anime - AnimeFLV</button>
-                <button class="category-btn" onclick="window.location.href='https://animeflix.shop/'">🎌 Anime - AnimeFlix</button>
-                <button class="category-btn" onclick="window.location.href='https://doramasflix.in/'">🎭 Doramas - DoramasFlix</button>
-                <button class="category-btn" onclick="window.location.href='https://yandispoiler.com/'">🎭 Doramas - YandiSpoiler</button>
-                <button class="category-btn" onclick="window.location.href='https://doramasmp4.dev/'">🎭 Doramas - DoramasMP4</button>
-                <button class="category-btn" onclick="window.location.href='https://hsy.myturcas.com/home/'">📖 Novelas Turcas - MyTurcas</button>
-                <button class="category-btn" onclick="window.location.href='https://tubitv.com/'">🎬 Películas - TubiTV</button>
-                              
-
+                <button class="category-btn" onclick="window.location.href='https://jkanime.net/'">🎥 Anime - JKAnime</button>
+                <button class="category-btn" onclick="window.location.href='https://animeflv.com.se/'">🎥 Anime - AnimeFLV</button>
+                <button class="category-btn" onclick="window.location.href='https://animeflix.shop/'">🎥 Anime - AnimeFlix</button>
+                <button class="category-btn" onclick="window.location.href='https://doramasflix.in/'">📺 Doramas - DoramasFlix</button>
+                <button class="category-btn" onclick="window.location.href='https://yandispoiler.com/'">📺 Doramas - YandiSpoiler</button>
+                <button class="category-btn" onclick="window.location.href='https://doramasmp4.dev/'">📺 Doramas - DoramasMP4</button>
+                <button class="category-btn" onclick="window.location.href='https://hsy.myturcas.com/home/'">📺 Novelas Turcas - MyTurcas</button>
+                <button class="category-btn" onclick="window.location.href='https://tubitv.com/'">📺 Películas - TubiTV</button>
             </div>
             <div id="player-container">
                 <video id="video-player" controls playsinline></video>
@@ -199,7 +198,7 @@
     </div>
 
     <script>
-        const MASTER_HASH = '13b4088f2f9a285e22128d11a6a1a31254baf9936c0192655d32a7f563aad503';
+        const MASTER_HASH = '7b0838c2af7e6b1f3fe5a49c32dd459d997a931cee349ca6869f3c17cc838394';
         const ENCRYPTION_KEY = 'iptv-secret-key-2025';
         let currentHls = null;
 
@@ -266,7 +265,7 @@
         function displayChannels(channels) {
             const container = document.getElementById('channel-list');
             container.innerHTML = channels.map(ch => `
-                <div class="channel-item" onclick="playChannel('${ch.url}')">
+                <div class="channel-item" onclick="playChannel('${ch.url}')" tabindex="0">
                     ${ch.logo ? `<img src="${ch.logo}" alt="${ch.name}">` : ''}
                     <span>${ch.name}</span>
                 </div>
@@ -311,6 +310,47 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('iptvToken')) showApp();
         });
+
+        // --- Navegación para dispositivos sin teclado (TV remota) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Seleccionar elementos interactivos ya presentes
+            const interactiveSelectors = '#auth-screen input, #auth-screen button, .top-bar button, .category-btn';
+            const focusableElements = Array.from(document.querySelectorAll(interactiveSelectors));
+            // Aseguramos que cada elemento tenga tabindex="0"
+            focusableElements.forEach(el => {
+                if (!el.hasAttribute('tabindex')) {
+                    el.setAttribute('tabindex', '0');
+                }
+            });
+
+            // Función para obtener elementos interactivos visibles
+            function getFocusableElements() {
+                return Array.from(document.querySelectorAll(interactiveSelectors))
+                    .filter(el => el.offsetParent !== null);
+            }
+
+            // Manejo de navegación con flechas y Enter
+            document.addEventListener('keydown', (event) => {
+                const focusable = getFocusableElements();
+                if (focusable.length === 0) return;
+                const currentIndex = focusable.indexOf(document.activeElement);
+                if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    const nextIndex = (currentIndex + 1) % focusable.length;
+                    focusable[nextIndex].focus();
+                } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    const prevIndex = (currentIndex - 1 + focusable.length) % focusable.length;
+                    focusable[prevIndex].focus();
+                } else if (event.key === 'Enter') {
+                    event.preventDefault();
+                    if (document.activeElement) {
+                        document.activeElement.click();
+                    }
+                }
+            });
+        });
+        // --- Fin de navegación para TV remota ---
     </script>
 </body>
 </html>
