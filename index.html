@@ -142,6 +142,11 @@
             border-radius: 4px;
         }
 
+        /* Para resaltar el foco visualmente */
+        .focus {
+            outline: 2px solid #007bff;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
@@ -184,21 +189,21 @@
                 <button class="category-btn" onclick="window.location.href='https://jkanime.net/'">🎥 Anime - JKAnime</button>
                 <button class="category-btn" onclick="window.location.href='https://animeflv.com.se/'">🎥 Anime - AnimeFLV</button>
                 <button class="category-btn" onclick="window.location.href='https://animeflix.shop/'">🎥 Anime - AnimeFlix</button>
-                <button class="category-btn" onclick="window.location.href='https://doramasflix.in/'">📺 Doramas - DoramasFlix</button>
-                <button class="category-btn" onclick="window.location.href='https://yandispoiler.com/'">📺 Doramas - YandiSpoiler</button>
-                <button class="category-btn" onclick="window.location.href='https://doramasmp4.dev/'">📺 Doramas - DoramasMP4</button>
-                <button class="category-btn" onclick="window.location.href='https://hsy.myturcas.com/home/'">📺 Novelas Turcas - MyTurcas</button>
-                <button class="category-btn" onclick="window.location.href='https://tubitv.com/'">📺 Películas - TubiTV</button>
+                <button class="category-btn" onclick="window.location.href='https://doramasflix.in/'">🎬 Doramas - DoramasFlix</button>
+                <button class="category-btn" onclick="window.location.href='https://yandispoiler.com/'">🎬 Doramas - YandiSpoiler</button>
+                <button class="category-btn" onclick="window.location.href='https://doramasmp4.dev/'">🎬 Doramas - DoramasMP4</button>
+                <button class="category-btn" onclick="window.location.href='https://hsy.myturcas.com/home/'">📃 Novelas Turcas - MyTurcas</button>
+                <button class="category-btn" onclick="window.location.href='https://tubitv.com/'">🎞️ Películas - TubiTV</button>
             </div>
-            <div id="player-container">
-                <video id="video-player" controls playsinline></video>
+            <div id="player-container" tabindex="0">
+                <video id="video-player" controls playsinline tabindex="0"></video>
             </div>
-            <div id="channel-list"></div>
+            <div id="channel-list" tabindex="0"></div>
         </div>
     </div>
 
     <script>
-        const MASTER_HASH = '7b0838c2af7e6b1f3fe5a49c32dd459d997a931cee349ca6869f3c17cc838394';
+        const MASTER_HASH = '310ced37200b1a0dae25edb263fe52c491f6e467268acab0ffec06666e2ed959';
         const ENCRYPTION_KEY = 'iptv-secret-key-2025';
         let currentHls = null;
 
@@ -306,30 +311,22 @@
             return CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
         }
 
-        // Inicialización
+        // Navegación para dispositivos sin teclado (TV remota)
         document.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('iptvToken')) showApp();
-        });
-
-        // --- Navegación para dispositivos sin teclado (TV remota) ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Seleccionar elementos interactivos ya presentes
-            const interactiveSelectors = '#auth-screen input, #auth-screen button, .top-bar button, .category-btn';
-            const focusableElements = Array.from(document.querySelectorAll(interactiveSelectors));
-            // Aseguramos que cada elemento tenga tabindex="0"
+            // Definimos los selectores interactivos (incluyendo el reproductor, la lista de canales y elementos ya existentes)
+            const interactiveSelectors = '#auth-screen input, #auth-screen button, .top-bar button, .category-btn, #player-container, #video-player, #channel-list, .channel-item';
+            const focusableElements = document.querySelectorAll(interactiveSelectors);
             focusableElements.forEach(el => {
                 if (!el.hasAttribute('tabindex')) {
                     el.setAttribute('tabindex', '0');
                 }
             });
 
-            // Función para obtener elementos interactivos visibles
             function getFocusableElements() {
                 return Array.from(document.querySelectorAll(interactiveSelectors))
                     .filter(el => el.offsetParent !== null);
             }
 
-            // Manejo de navegación con flechas y Enter
             document.addEventListener('keydown', (event) => {
                 const focusable = getFocusableElements();
                 if (focusable.length === 0) return;
@@ -350,7 +347,12 @@
                 }
             });
         });
-        // --- Fin de navegación para TV remota ---
+        // Fin de navegación para TV remota
+       
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('iptvToken')) showApp();
+        });
     </script>
 </body>
 </html>
