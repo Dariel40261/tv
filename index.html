@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Reproductor IPTV</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         * {
@@ -23,33 +22,8 @@
             overflow: hidden;
         }
 
-        #auth-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            padding: 20px;
-            background: #000;
-        }
-
-        #auth-screen input, #auth-screen button {
-            width: 100%;
-            max-width: 300px;
-            padding: 12px;
-            margin: 10px;
-            border: none;
-            border-radius: 5px;
-        }
-
-        #auth-screen button {
-            background: #007bff;
-            color: white;
-            cursor: pointer;
-        }
-
         #app {
-            display: none;
+            display: flex;
             flex: 1;
             flex-direction: column;
             height: 100vh;
@@ -142,7 +116,6 @@
             border-radius: 4px;
         }
 
-        /* Para resaltar el foco visualmente */
         .focus {
             outline: 2px solid #007bff;
         }
@@ -165,14 +138,6 @@
     </style>
 </head>
 <body>
-    <div id="auth-screen">
-        <!-- Imagen añadida al principio -->
-        <img src="ruta-de-la-imagen.jpg" alt="Logo" style="max-width:300px; margin-bottom:20px;">
-        <h1>Autenticación</h1>
-        <input type="password" id="password-input" placeholder="Contraseña maestra" autofocus onkeyup="if(event.key==='Enter' || event.keyCode===13){ authenticate(); }">
-        <button onclick="authenticate()">Acceder</button>
-    </div>
-    
     <div id="app">
         <div class="top-bar">
             <button onclick="updatePlaylists()">Actualizar</button>
@@ -180,8 +145,7 @@
         <div class="main-content">
             <div id="sidebar">
                 <button class="category-btn" onclick="loadCategory('tv')">📺 TV en Vivo</button>
-                               
-                <!-- External Link Indicator -->
+                
                 <div id="external-link-indicator">🔗 Enlaces externos a continuación:</div>
                 
                 <button class="category-btn" onclick="window.location.href='https://www.serieslatino.org/'">📺 Series - SeriesLatino</button>
@@ -203,52 +167,30 @@
     </div>
 
     <script>
-        const MASTER_HASH = '310ced37200b1a0dae25edb263fe52c491f6e467268acab0ffec06666e2ed959';
-        const ENCRYPTION_KEY = 'iptv-secret-key-2025';
         let currentHls = null;
 
-        // Service Worker
-        if ('serviceWorker' in navigator) {
-            const swCode = `...`;
-            const blob = new Blob([swCode], {type: 'application/javascript'});
-            navigator.serviceWorker.register(URL.createObjectURL(blob));
-        }
-
-        // Autenticación
-        function authenticate() {
-            const password = document.getElementById('password-input').value;
-            const hash = CryptoJS.SHA256(password).toString();
-            if (hash === MASTER_HASH) {
-                localStorage.setItem('iptvToken', 'authenticated');
-                showApp();
-            } else {
-                alert('Contraseña incorrecta');
-            }
-        }
-
-        function showApp() {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app').style.display = 'flex';
+        // Carga inicial
+        document.addEventListener('DOMContentLoaded', () => {
             loadCategory('tv');
-        }
+        });
 
         // Carga de categorías
         async function loadCategory(category) {
             try {
-                const encrypted = localStorage.getItem(`${category}_playlist`);
-                let data = encrypted ? decryptData(encrypted) : await fetchPlaylist(category);
+                const response = await fetch(`${category}.m3u`);
+                const data = await response.text();
                 displayChannels(parseM3U(data));
             } catch (error) {
                 alert('Error cargando la lista: ' + error.message);
             }
         }
-
-        async function fetchPlaylist(category) {
+ 
+         async function fetchPlaylist(category) {
             const response = await fetch(`${category}.m3u`);
             const data = await response.text();
             localStorage.setItem(`${category}_playlist`, encryptData(data));
             return data;
-        }
+       }
 
         function parseM3U(content) {
             const channels = [];
@@ -295,63 +237,39 @@
         // Actualización de listas
         async function updatePlaylists() {
             try {
-                await Promise.all(['tv', 'movies', 'series', 'anime'].map(fetchPlaylist));
+                await Promise.all(['tv', 'movies', 'series', 'anime'].map(category => {
+                    return fetch(`${category}.m3u`);
+                }));
                 alert('Listas actualizadas correctamente');
             } catch (error) {
                 alert('Error actualizando listas: ' + error.message);
             }
         }
 
-        // Cifrado/Descifrado
-        function encryptData(data) {
-            return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString();
-        }
-
-        function decryptData(encrypted) {
-            return CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
-        }
-
         // Navegación para dispositivos sin teclado (TV remota)
-        document.addEventListener('DOMContentLoaded', () => {
-            // Definimos los selectores interactivos (incluyendo el reproductor, la lista de canales y elementos ya existentes)
-            const interactiveSelectors = '#auth-screen input, #auth-screen button, .top-bar button, .category-btn, #player-container, #video-player, #channel-list, .channel-item';
-            const focusableElements = document.querySelectorAll(interactiveSelectors);
-            focusableElements.forEach(el => {
-                if (!el.hasAttribute('tabindex')) {
-                    el.setAttribute('tabindex', '0');
+        document.addEventListener('keydown', (event) => {
+            const interactiveSelectors = '.top-bar button, .category-btn, #player-container, #video-player, #channel-list, .channel-item';
+            const focusable = Array.from(document.querySelectorAll(interactiveSelectors))
+                .filter(el => el.offsetParent !== null);
+            
+            if (focusable.length === 0) return;
+            
+            const currentIndex = focusable.indexOf(document.activeElement);
+            
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                event.preventDefault();
+                const nextIndex = (currentIndex + 1) % focusable.length;
+                focusable[nextIndex].focus();
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const prevIndex = (currentIndex - 1 + focusable.length) % focusable.length;
+                focusable[prevIndex].focus();
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                if (document.activeElement) {
+                    document.activeElement.click();
                 }
-            });
-
-            function getFocusableElements() {
-                return Array.from(document.querySelectorAll(interactiveSelectors))
-                    .filter(el => el.offsetParent !== null);
             }
-
-            document.addEventListener('keydown', (event) => {
-                const focusable = getFocusableElements();
-                if (focusable.length === 0) return;
-                const currentIndex = focusable.indexOf(document.activeElement);
-                if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-                    event.preventDefault();
-                    const nextIndex = (currentIndex + 1) % focusable.length;
-                    focusable[nextIndex].focus();
-                } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-                    event.preventDefault();
-                    const prevIndex = (currentIndex - 1 + focusable.length) % focusable.length;
-                    focusable[prevIndex].focus();
-                } else if (event.key === 'Enter') {
-                    event.preventDefault();
-                    if (document.activeElement) {
-                        document.activeElement.click();
-                    }
-                }
-            });
-        });
-        // Fin de navegación para TV remota
-       
-        // Inicialización
-        document.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('iptvToken')) showApp();
         });
     </script>
 </body>
